@@ -1,158 +1,795 @@
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>A ciegas: aprende a usar un lector de pantalla</title>
-  <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-  <!-- Cortina negra: tapa la pantalla y el mouse, pero el lector sigue leyendo lo que hay debajo -->
-  <div id="cortina" aria-hidden="true" hidden></div>
+<title>Apagón en la oficina</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+  /* Layout: tablero de oficina. Post-it de bienvenida a la izquierda, "empleados del mes" a la derecha. */
+  :root {
+    --bg: #e7eaee;
+    --panel: #f8f9fb;
+    --ink: #1a2130;
+    --muted: #586174;
+    --line: #c9ced8;
+    --postit: #ffe17a;
+    --postit-ink: #3b3000;
+    --exit: #0f7a45;
+    --exit-ink: #ffffff;
+    --error: #b42318;
+    --font-display: "Bungee", "Arial Black", Impact, sans-serif;
+    --font-body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12161e; --panel: #1b212c; --ink: #e8ebf1; --muted: #9aa3b5; --line: #2e3646;
+      --postit: #e9c84f; --postit-ink: #2a2200; --exit: #3fbf7f; --exit-ink: #04140b; --error: #ff8a7a;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12161e; --panel: #1b212c; --ink: #e8ebf1; --muted: #9aa3b5; --line: #2e3646;
+    --postit: #e9c84f; --postit-ink: #2a2200; --exit: #3fbf7f; --exit-ink: #04140b; --error: #ff8a7a;
+    color-scheme: dark;
+  }
 
-  <!-- Región donde se anuncian los resultados (correcto, incorrecto, cambio de lección) -->
-  <div id="anuncios" class="solo-lector" aria-live="assertive" aria-atomic="true"></div>
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 1.0625rem/1.6 var(--font-body);
+  }
+  .envoltura {
+    max-width: 70rem;
+    margin: 0 auto;
+    padding-block: 2rem 4rem;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  h1, h2, h3 { text-wrap: balance; line-height: 1.15; }
+  h1 { font: 2rem/1.1 var(--font-display); margin: 0 0 .75rem; }
+  h2 { font-size: 1.25rem; margin: 1.5rem 0 .4rem; }
 
-  <main>
-    <!-- Pantalla 0: bienvenida (visible) -->
-    <section id="bienvenida" class="pantalla" aria-labelledby="bienvenida-titulo">
-      <h1 id="bienvenida-titulo" tabindex="-1">A ciegas</h1>
-      <p class="bajada">Aprende a usar un lector de pantalla a tu ritmo y sin que nadie te mire.</p>
+  /* Cartel de inicio */
+  .cartel {
+    display: inline-flex;
+    align-items: center;
+    gap: .6rem;
+    background: var(--exit);
+    color: var(--exit-ink);
+    font: .85rem/1 var(--font-display);
+    letter-spacing: .08em;
+    padding: .45rem .7rem;
+    border-radius: .2rem;
+  }
+  .titulo-juego {
+    font: clamp(2.4rem, 7vw, 4.4rem)/.95 var(--font-display);
+    margin: 1rem 0 .5rem;
+  }
+  .bajada { font-size: 1.2rem; color: var(--muted); max-width: 38rem; margin: 0 0 2rem; }
 
-      <p>Mucha gente que trabaja en tecnología nunca usó un lector de pantalla, y es normal. Esta práctica te propone
-        algo simple: apagamos la pantalla y te movés solo con el teclado y la voz, como lo hacen todos los días
-        las personas ciegas.</p>
+  .tablero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    gap: 2rem;
+    align-items: start;
+  }
+  @media (max-width: 52rem) { .tablero { grid-template-columns: minmax(0, 1fr); } }
 
-      <form id="form-inicio">
-        <fieldset>
-          <legend>¿Qué lector de pantalla vas a usar?</legend>
-          <label><input type="radio" name="lector" value="nvda" checked> NVDA (Windows, gratis)</label>
-          <label><input type="radio" name="lector" value="jaws"> JAWS (Windows)</label>
-          <label><input type="radio" name="lector" value="voiceover"> VoiceOver (Mac)</label>
-        </fieldset>
+  .postit {
+    background: var(--postit);
+    color: var(--postit-ink);
+    padding: 1.5rem;
+    border-radius: .15rem;
+    box-shadow: 0 1px 0 rgba(0,0,0,.08), 0 12px 24px -16px rgba(0,0,0,.45);
+    transform: rotate(-.6deg);
+  }
+  .postit h2:first-child { margin-top: 0; }
+  .postit p { margin: .4rem 0; }
+  .postit fieldset { border: 2px solid currentColor; border-radius: .3rem; padding: .6rem 1rem; margin: 1rem 0; }
+  .postit legend { font-weight: 700; padding: 0 .3rem; }
+  .postit fieldset label { display: block; padding: .15rem 0; }
+  .postit .nota { font-size: .95rem; }
 
-        <div class="como-encender" aria-live="polite">
-          <h2>Antes de empezar, enciende el lector</h2>
-          <p id="encender-texto"></p>
-        </div>
+  .fila { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+  label.bloque { display: block; font-weight: 700; margin-top: .5rem; }
+  input[type="text"], select {
+    font: inherit;
+    padding: .55rem .6rem;
+    border: 2px solid var(--muted);
+    border-radius: .3rem;
+    background: var(--panel);
+    color: var(--ink);
+    width: 100%;
+    max-width: 22rem;
+  }
+  .postit input[type="text"] { border-color: var(--postit-ink); background: #fffbe6; color: #2a2200; flex: 1 1 12rem; }
 
-        <div class="aviso">
-          <h2>Para salir de la pantalla negra</h2>
-          <p>Presiona <kbd>Escape</kbd> tres veces seguidas. También hay un enlace para desactivarla al final de cada lección.</p>
-        </div>
+  button {
+    font: inherit;
+    cursor: pointer;
+    padding: .55rem 1rem;
+    border: 2px solid var(--ink);
+    border-radius: .3rem;
+    background: var(--panel);
+    color: var(--ink);
+  }
+  .postit button { border-color: var(--postit-ink); background: transparent; color: var(--postit-ink); }
+  .boton-salida {
+    background: var(--exit) !important;
+    border-color: var(--exit) !important;
+    color: var(--exit-ink) !important;
+    font: 1rem/1 var(--font-display);
+    letter-spacing: .04em;
+    padding: .9rem 1.3rem;
+    margin-top: .75rem;
+  }
+  :focus-visible { outline: 3px solid var(--exit); outline-offset: 3px; }
+  h1[tabindex="-1"]:focus, h2[tabindex="-1"]:focus { outline: none; }
+  kbd { font: .9em ui-monospace, monospace; border: 1px solid currentColor; border-radius: .2rem; padding: 0 .3em; }
 
-        <button type="submit" class="boton-principal">Apagar la pantalla y empezar</button>
-      </form>
-    </section>
+  /* Empleados del mes (ranking) */
+  .ranking {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: .4rem;
+    padding: 1.25rem;
+  }
+  .ranking h2 { margin-top: 0; font: 1.1rem/1.2 var(--font-display); letter-spacing: .02em; }
+  .ranking .estado { color: var(--muted); font-size: .9rem; margin: .25rem 0 .75rem; }
+  .tabla-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  caption { text-align: left; color: var(--muted); font-size: .9rem; padding-bottom: .5rem; }
+  th, td { text-align: left; padding: .45rem .4rem; border-bottom: 1px solid var(--line); }
+  th { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  td.num, th.num { text-align: right; }
+  tr.yo td { font-weight: 700; }
+  tr:first-child td:first-child::after { content: " ★"; color: var(--exit); }
+  .vacio { color: var(--muted); padding: 1rem 0; }
 
-    <!-- Lección 1: leer -->
-    <section id="leccion-1" class="pantalla" aria-labelledby="l1-titulo" hidden>
-      <h1 id="l1-titulo" tabindex="-1">Lección 1 de 4: leer la página</h1>
-      <p>Hola. La pantalla está negra y eso está bien: a partir de ahora tus oídos son tus ojos.</p>
-      <p>Un lector de pantalla lee la página de a un elemento por vez: un párrafo, un título, un botón.</p>
-      <p data-tip="leer"></p>
-      <p>Si la voz va muy rápido, no te preocupes. Puedes volver a leer cuantas veces quieras.</p>
-      <p>Cuando llegues al botón "Continuar", actívalo.</p>
-      <p data-tip="activar"></p>
-      <button type="button" data-accion="siguiente">Continuar</button>
-      <p><a href="#" data-accion="quitar-cortina">Desactivar pantalla negra</a></p>
-    </section>
+  /* Niveles (debajo de la cortina) */
+  .nivel { max-width: 44rem; }
+  .nivel .narracion { font-size: 1.15rem; }
+  .nivel .tip { border-left: 4px solid var(--exit); padding-left: .8rem; color: var(--muted); }
+  .nivel .pista { font-style: italic; }
+  .nivel .pista:empty { display: none; }
+  .objetos { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .error { color: var(--error); margin: .2rem 0 0; }
+  .error:empty { display: none; }
+  .campo { margin-bottom: 1rem; }
+  .campo-check label { display: flex; gap: .5rem; align-items: flex-start; }
+  .salir-cortina { margin-top: 2rem; font-size: .95rem; }
+  .salir-cortina a { color: var(--muted); }
 
-    <!-- Lección 2: encabezados -->
-    <section id="leccion-2" class="pantalla" aria-labelledby="l2-titulo" hidden>
-      <h1 id="l2-titulo" tabindex="-1">Lección 2 de 4: saltar por encabezados</h1>
-      <p>Leer todo línea por línea es lento. Las personas que usan lector de pantalla saltan de título en título
-        para encontrar rápido lo que buscan, como cuando hojeas un diario.</p>
-      <p data-tip="encabezado"></p>
-      <p>Abajo hay tres salas. En una de ellas está escondida la palabra secreta. Encuéntrala y escríbela en
-        el campo que está al final.</p>
+  /* La intranet de 2009: rota a propósito */
+  .intranet { border: 3px ridge #8a8a8a; background: #d4d0c8; color: #000; padding: .5rem; font-family: "Comic Sans MS", "Comic Sans", cursive; margin: 1rem 0; }
+  .intranet .i-titulo { font-size: 1.5rem; color: #000080; font-weight: bold; }
+  .intranet .i-link { color: #0000ee; text-decoration: underline; }
+  .intranet .i-boton { display: inline-block; width: 3rem; height: 3rem; background: #c0c0c0; border: 2px outset #fff; cursor: pointer; margin: .3rem; }
 
-      <h2>Sala 1: el pasillo</h2>
-      <p>Un pasillo largo con cuadros en las paredes. Aquí no hay nada escondido.</p>
+  /* Resultados */
+  .resultado { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: .75rem; margin: 1rem 0 1.5rem; }
+  .dato { background: var(--panel); border: 1px solid var(--line); border-radius: .4rem; padding: .75rem 1rem; }
+  .dato .valor { font: 1.6rem/1.1 var(--font-display); font-variant-numeric: tabular-nums; }
+  .dato .etiqueta { font-size: .85rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .rango { font: 1.4rem/1.2 var(--font-display); color: var(--exit); margin: .25rem 0 0; }
 
-      <h2>Sala 2: la biblioteca</h2>
-      <p>Estantes llenos de libros viejos. Entre ellos hay uno abierto que dice: la palabra secreta es <span lang="es">faro</span>.</p>
+  /* Cortina negra: tapa todo y bloquea el mouse; el lector sigue leyendo lo de abajo */
+  #cortina { position: fixed; inset: 0; z-index: 2147483647; background: #000; cursor: none; }
+  body.a-oscuras { overflow: hidden; }
+  .solo-lector { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-      <h2>Sala 3: el jardín</h2>
-      <p>Flores, un banco y una fuente. Aquí tampoco hay nada.</p>
+  @media (prefers-reduced-motion: reduce) { .postit { transform: none; } }
+</style>
 
-      <h2>Escribe la palabra secreta</h2>
-      <p data-tip="campo"></p>
-      <form data-ejercicio="palabra" novalidate>
-        <label for="palabra">Palabra secreta</label>
-        <input id="palabra" name="palabra" type="text" autocomplete="off">
-        <button type="submit">Comprobar</button>
-      </form>
-      <p><a href="#" data-accion="quitar-cortina">Desactivar pantalla negra</a></p>
-    </section>
+<div id="cortina" aria-hidden="true" hidden></div>
+<div id="anuncios" class="solo-lector" aria-live="assertive" aria-atomic="true"></div>
 
-    <!-- Lección 3: botones -->
-    <section id="leccion-3" class="pantalla" aria-labelledby="l3-titulo" hidden>
-      <h1 id="l3-titulo" tabindex="-1">Lección 3 de 4: encontrar botones</h1>
-      <p>Igual que con los títulos, puedes saltar directamente de botón en botón.</p>
-      <p data-tip="boton"></p>
-      <p>Abajo hay varios botones con nombres de frutas. Busca y activa el botón "Mango".</p>
-      <div class="frutas" data-ejercicio="frutas">
-        <button type="button">Banana</button>
-        <button type="button">Frutilla</button>
-        <button type="button">Kiwi</button>
-        <button type="button">Durazno</button>
-        <button type="button">Mango</button>
-        <button type="button">Pera</button>
+<main class="envoltura">
+
+  <!-- INICIO (visible) -->
+  <section id="inicio" class="pantalla" aria-labelledby="inicio-titulo">
+    <span class="cartel" aria-hidden="true">▶ SALIDA</span>
+    <h1 id="inicio-titulo" class="titulo-juego" tabindex="-1">Apagón en la oficina</h1>
+    <p class="bajada">Viernes, 18:59. Se cortó la luz y quedaste encerrado con la máquina de café. Sal usando solo el teclado y un lector de pantalla.</p>
+
+    <div class="tablero">
+      <div class="postit">
+        <form id="form-inicio" novalidate>
+          <h2>Antes de que se apague todo</h2>
+
+          <label class="bloque" for="apodo">Tu apodo para el ranking</label>
+          <div class="fila">
+            <input id="apodo" name="apodo" type="text" maxlength="24" autocomplete="off" aria-describedby="apodo-ayuda apodo-error">
+            <button type="button" id="inventar">Inventar uno</button>
+          </div>
+          <p id="apodo-ayuda" class="nota">Nadie sabe quién es quién. Puedes ser "Topo Ejecutivo".</p>
+          <p id="apodo-error" class="error"></p>
+
+          <fieldset>
+            <legend>¿Qué lector de pantalla vas a usar?</legend>
+            <label><input type="radio" name="lector" value="nvda" checked> NVDA (Windows, gratis)</label>
+            <label><input type="radio" name="lector" value="jaws"> JAWS (Windows)</label>
+            <label><input type="radio" name="lector" value="voiceover"> VoiceOver (Mac)</label>
+          </fieldset>
+
+          <h2>Enciende el lector</h2>
+          <p id="encender-texto" aria-live="polite"></p>
+
+          <h2>Cómo se juega</h2>
+          <p>Son cuatro salas y un final sorpresa. Arrancas con 1000 puntos y pierdes 1 por segundo, 100 por cada pista y 25 por cada respuesta equivocada.</p>
+          <p class="nota">Para prender la luz presiona <kbd>Escape</kbd> tres veces. Puedes seguir jugando, pero esa partida no entra al ranking.</p>
+
+          <button type="submit" class="boton-salida">Cortar la luz y empezar</button>
+        </form>
       </div>
-      <p><a href="#" data-accion="quitar-cortina">Desactivar pantalla negra</a></p>
-    </section>
 
-    <!-- Lección 4: formularios -->
-    <section id="leccion-4" class="pantalla" aria-labelledby="l4-titulo" hidden>
-      <h1 id="l4-titulo" tabindex="-1">Lección 4 de 4: completar un formulario</h1>
-      <p>Los formularios son donde más se nota si una página es accesible: cada campo debe decir qué espera.</p>
-      <p data-tip="formulario"></p>
-      <p>Completa los tres campos y envía el formulario. Si algo falta, te lo vamos a decir.</p>
-      <form data-ejercicio="formulario" novalidate>
-        <div class="campo">
-          <label for="nombre">Tu nombre</label>
-          <input id="nombre" name="nombre" type="text" autocomplete="given-name" aria-describedby="nombre-error">
-          <p id="nombre-error" class="error"></p>
-        </div>
-        <div class="campo">
-          <label for="experiencia">¿Cuánto usaste un lector de pantalla antes de hoy?</label>
-          <select id="experiencia" name="experiencia" aria-describedby="experiencia-error">
-            <option value="">Elige una opción</option>
-            <option value="nunca">Nunca</option>
-            <option value="poco">Un poco</option>
-            <option value="bastante">Bastante</option>
-          </select>
-          <p id="experiencia-error" class="error"></p>
-        </div>
-        <div class="campo">
-          <label><input id="compromiso" name="compromiso" type="checkbox" aria-describedby="compromiso-error">
-            Me comprometo a probar mi próximo proyecto con un lector de pantalla</label>
-          <p id="compromiso-error" class="error"></p>
-        </div>
-        <button type="submit">Enviar</button>
-      </form>
-      <p><a href="#" data-accion="quitar-cortina">Desactivar pantalla negra</a></p>
-    </section>
+      <aside class="ranking" aria-labelledby="ranking-titulo">
+        <h2 id="ranking-titulo">Empleados del mes de la oscuridad</h2>
+        <p class="estado" data-ranking-estado>Cargando el ranking…</p>
+        <div class="tabla-scroll" data-ranking></div>
+      </aside>
+    </div>
+  </section>
 
-    <!-- Final -->
-    <section id="final" class="pantalla" aria-labelledby="final-titulo" hidden>
-      <h1 id="final-titulo" tabindex="-1">¡Lo lograste!</h1>
-      <p id="final-saludo">Completaste las cuatro lecciones sin mirar la pantalla.</p>
-      <h2>Lo que aprendiste</h2>
+  <!-- NIVEL 1: leer -->
+  <section id="nivel-1" class="pantalla nivel" aria-labelledby="n1-titulo" hidden>
+    <h1 id="n1-titulo" tabindex="-1">Sala 1 de 4: la recepción</h1>
+    <p class="narracion">Plaf. Se cortó la luz. Todos se fueron corriendo. Bueno, casi todos: quedaste tú y el dispensador de agua, que hace glu glu.</p>
+    <p>Buena noticia: la puerta de salida funciona aunque no haya luz. Mala noticia: se abre con tarjeta, y tú no tienes.</p>
+    <p class="tip" data-tip="leer"></p>
+    <p>En el mostrador hay un post-it. Dice: "Si se corta la luz, no entres en pánico. Ve al pasillo. Firmado: Recursos Humanos".</p>
+    <p class="tip" data-tip="activar"></p>
+    <button type="button" data-accion="siguiente">Ir al pasillo</button>
+    <p class="pista" data-pista-texto></p>
+    <button type="button" data-accion="pista">Pedir una pista (cuesta 100 puntos)</button>
+    <p class="salir-cortina"><a href="#" data-accion="prender-luz">Prender la luz (la partida no entra al ranking)</a></p>
+  </section>
+
+  <!-- NIVEL 2: encabezados -->
+  <section id="nivel-2" class="pantalla nivel" aria-labelledby="n2-titulo" hidden>
+    <h1 id="n2-titulo" tabindex="-1">Sala 2 de 4: el pasillo de las salas de reunión</h1>
+    <p class="narracion">El pasillo tiene cuatro salas de reunión con nombres que eligió alguien de Marketing. En una de ellas quedó anotada la clave del wifi de emergencia. Sin wifi no puedes pedir ayuda (ni ver memes).</p>
+    <p class="tip" data-tip="encabezado"></p>
+
+    <h2>Sala Sinergia</h2>
+    <p>Un afiche dice "Juntos somos más". Debajo hay una sola silla.</p>
+
+    <h2>Sala Disrupción</h2>
+    <p>Huele a café frío y a reunión que pudo haber sido un mail.</p>
+
+    <h2>Sala Pensamiento Lateral</h2>
+    <p>En la pizarra alguien escribió: "Clave del wifi: pantuflas". Al lado hay un dibujo de un gato.</p>
+
+    <h2>Sala Quick Win</h2>
+    <p>Está llena de sillas con rueditas apiladas hasta el techo. Nadie sabe por qué.</p>
+
+    <h2>Router de emergencia</h2>
+    <p class="tip" data-tip="campo"></p>
+    <form data-ejercicio="wifi" novalidate>
+      <label class="bloque" for="clave">Clave del wifi</label>
+      <input id="clave" name="clave" type="text" autocomplete="off">
+      <button type="submit">Conectar</button>
+    </form>
+    <p class="pista" data-pista-texto></p>
+    <button type="button" data-accion="pista">Pedir una pista (cuesta 100 puntos)</button>
+    <p class="salir-cortina"><a href="#" data-accion="prender-luz">Prender la luz (la partida no entra al ranking)</a></p>
+  </section>
+
+  <!-- NIVEL 3: botones -->
+  <section id="nivel-3" class="pantalla nivel" aria-labelledby="n3-titulo" hidden>
+    <h1 id="n3-titulo" tabindex="-1">Sala 3 de 4: la cocina</h1>
+    <p class="narracion">Llega un mensaje de Ramiro, de Sistemas: "La tarjeta de repuesto está en la cocina. Y no toques mi táper". Revisa los objetos de la cocina hasta encontrarla.</p>
+    <p class="tip" data-tip="boton"></p>
+    <div class="objetos" data-ejercicio="cocina">
+      <button type="button" data-respuesta="Hay un yogur vencido en 2019 y una nota que dice NO ES TUYO. Ninguna tarjeta.">Abrir la heladera</button>
+      <button type="button" data-respuesta="Adentro hay unos fideos que alguien olvidó en marzo. Mejor cerrarlo rápido.">Revisar el microondas</button>
+      <button type="button" data-respuesta="Ramiro te dijo que no lo toques. Lo sabe. Siempre lo sabe.">Levantar el táper de Ramiro</button>
+      <button type="button" data-respuesta="Tiene café de las 8 de la mañana. Tiene más personalidad que tú. Pero no tiene tarjeta.">Mirar en la cafetera</button>
+      <button type="button" data-correcto>Abrir el cajón de las cosas raras</button>
+      <button type="button" data-respuesta="Glu glu. El dispensador te mira con desprecio.">Sacudir el dispensador de agua</button>
+    </div>
+    <p class="pista" data-pista-texto></p>
+    <button type="button" data-accion="pista">Pedir una pista (cuesta 100 puntos)</button>
+    <p class="salir-cortina"><a href="#" data-accion="prender-luz">Prender la luz (la partida no entra al ranking)</a></p>
+  </section>
+
+  <!-- NIVEL 4: formulario -->
+  <section id="nivel-4" class="pantalla nivel" aria-labelledby="n4-titulo" hidden>
+    <h1 id="n4-titulo" tabindex="-1">Sala 4 de 4: la puerta de salida</h1>
+    <p class="narracion">Pasas la tarjeta. La puerta dice con voz de robot: "Antes de salir, complete el formulario de salida obligatorio". Porque hasta en un apagón hay burocracia.</p>
+    <p class="tip" data-tip="formulario"></p>
+    <form data-ejercicio="puerta" novalidate>
+      <div class="campo">
+        <label class="bloque" for="nombre">Nombre y apellido</label>
+        <input id="nombre" name="nombre" type="text" autocomplete="name" aria-describedby="nombre-error">
+        <p id="nombre-error" class="error"></p>
+      </div>
+      <div class="campo">
+        <label class="bloque" for="area">Área</label>
+        <select id="area" name="area" aria-describedby="area-error">
+          <option value="">Elige un área</option>
+          <option>Desarrollo</option>
+          <option>Diseño</option>
+          <option>Producto</option>
+          <option>Marketing</option>
+          <option>Recursos Humanos (yo hice este formulario)</option>
+        </select>
+        <p id="area-error" class="error"></p>
+      </div>
+      <div class="campo campo-check">
+        <label><input id="juramento" name="juramento" type="checkbox" aria-describedby="juramento-error"> Juro que no me llevo resmas de papel ni lapiceras</label>
+        <p id="juramento-error" class="error"></p>
+      </div>
+      <button type="submit">Enviar y salir</button>
+    </form>
+    <p class="pista" data-pista-texto></p>
+    <button type="button" data-accion="pista">Pedir una pista (cuesta 100 puntos)</button>
+    <p class="salir-cortina"><a href="#" data-accion="prender-luz">Prender la luz (la partida no entra al ranking)</a></p>
+  </section>
+
+  <!-- NIVEL FINAL: página inaccesible -->
+  <section id="nivel-5" class="pantalla nivel" aria-labelledby="n5-titulo" hidden>
+    <h1 id="n5-titulo" tabindex="-1">Final sorpresa: la intranet de 2009</h1>
+    <p class="narracion">La puerta hace bip, pero no se abre. Se prende una pantalla vieja: "Para salir, marque su salida en el Portal del Colaborador". El portal lo hizo un proveedor en 2009 y nadie lo tocó desde entonces.</p>
+    <p>Busca el botón para marcar la salida. Tranquilo: el reloj ya se detuvo, esta parte no resta puntos.</p>
+
+    <div class="intranet">
+      <img src="logo_portal_FINAL_v3_definitivo.gif" width="120" height="40">
+      <div class="i-titulo">Bienvenido al Portal del Colaborador</div>
+      <div>Para más información <a href="#" class="i-link" data-roto>click aquí</a>. Para consultas <a href="#" class="i-link" data-roto>click aquí</a>. Para todo lo demás <a href="#" class="i-link" data-roto>click aquí</a>.</div>
+      <div><a href="#" class="i-link" data-roto>Ver</a> | <a href="#" class="i-link" data-roto>Más</a> | <a href="#" class="i-link" data-roto>Ir</a></div>
+      <div class="i-boton" tabindex="0"></div>
+      <div class="i-boton" tabindex="0"></div>
+      <div class="i-boton" id="marcar-salida"></div>
+    </div>
+
+    <button type="button" data-accion="rendirse">Me rindo, esto es imposible</button>
+
+    <div id="explicacion" hidden>
+      <h2 id="explicacion-titulo" tabindex="-1">¿Qué estaba roto?</h2>
+      <p id="explicacion-intro"></p>
       <ul>
-        <li>Leer una página elemento por elemento.</li>
-        <li>Saltar por encabezados para encontrar información.</li>
-        <li>Ir directo a los botones.</li>
-        <li>Completar un formulario y entender sus errores.</li>
+        <li>El logo es una imagen sin texto alternativo, por eso el lector leyó el nombre del archivo.</li>
+        <li>"Bienvenido al Portal" parece un título, pero en el código no lo es, así que la tecla H no lo encuentra.</li>
+        <li>Seis enlaces dicen "click aquí", "Ver", "Más" o "Ir". Fuera de contexto no dicen adónde llevan.</li>
+        <li>Los botones son cajas grises sin nombre. Dos reciben el foco pero no dicen nada. El de marcar la salida ni siquiera se alcanza con el teclado.</li>
       </ul>
-      <p>Ahora piensa: si una página no tuviera títulos, ni nombres en sus botones, ni etiquetas en sus campos,
-        ¿cuánto te habría costado?</p>
-      <button type="button" data-accion="quitar-cortina">Desactivar pantalla negra</button>
-      <button type="button" data-accion="reiniciar">Volver a empezar</button>
-    </section>
-  </main>
+      <p>Así se siente buena parte de la web para millones de personas, todos los días. Y casi todo se arregla con HTML que ya conocemos.</p>
+      <button type="button" data-accion="terminar">Salir por la ventana (es planta baja)</button>
+    </div>
+  </section>
 
-  <script src="app.js"></script>
-</body>
-</html>
+  <!-- RESULTADOS (visible) -->
+  <section id="fin" class="pantalla" aria-labelledby="fin-titulo" hidden>
+    <span class="cartel" aria-hidden="true">▶ SALIDA</span>
+    <h1 id="fin-titulo" class="titulo-juego" tabindex="-1">¡Saliste!</h1>
+    <p class="bajada" id="fin-texto"></p>
+    <div class="tablero">
+      <div>
+        <p class="rango" id="fin-rango"></p>
+        <div class="resultado">
+          <div class="dato"><div class="valor" id="fin-puntos">0</div><div class="etiqueta">Puntos</div></div>
+          <div class="dato"><div class="valor" id="fin-tiempo">0:00</div><div class="etiqueta">Tiempo</div></div>
+          <div class="dato"><div class="valor" id="fin-pistas">0</div><div class="etiqueta">Pistas</div></div>
+          <div class="dato"><div class="valor" id="fin-errores">0</div><div class="etiqueta">Errores</div></div>
+        </div>
+        <p id="fin-ranking-msg"></p>
+        <button type="button" class="boton-salida" data-accion="reiniciar">Jugar otra vez</button>
+      </div>
+      <aside class="ranking" aria-labelledby="ranking-fin-titulo">
+        <h2 id="ranking-fin-titulo">Empleados del mes de la oscuridad</h2>
+        <p class="estado" data-ranking-estado></p>
+        <div class="tabla-scroll" data-ranking></div>
+      </aside>
+    </div>
+  </section>
+</main>
+
+<script>
+const ATAJOS = {
+  nvda: {
+    encender: 'NVDA se enciende con Control + Alt + N. Para callar la voz en cualquier momento, presiona Control.',
+    leer: 'Lee con la flecha abajo (siguiente línea) y la flecha arriba (anterior). Insert + flecha abajo lee todo de corrido.',
+    activar: 'Para activar un botón, ponte sobre él y presiona Enter.',
+    encabezado: 'Presiona H para saltar al siguiente título y Shift + H para volver al anterior. Insert + F7 muestra la lista de títulos.',
+    campo: 'La letra E te lleva al siguiente campo de texto. Al escribir, NVDA entra en modo foco y suena un tono agudo.',
+    boton: 'Presiona B para saltar al siguiente botón y Shift + B para el anterior.',
+    formulario: 'Tab avanza al siguiente campo y Shift + Tab retrocede. En la lista, elige con las flechas. La casilla se marca con Espacio.',
+  },
+  jaws: {
+    encender: 'Abre JAWS desde el menú Inicio. Para callar la voz en cualquier momento, presiona Control.',
+    leer: 'Lee con la flecha abajo (siguiente línea) y la flecha arriba (anterior). Insert + flecha abajo lee todo de corrido.',
+    activar: 'Para activar un botón, ponte sobre él y presiona Enter.',
+    encabezado: 'Presiona H para saltar al siguiente título y Shift + H para volver al anterior. Insert + F6 muestra la lista de títulos.',
+    campo: 'La letra E te lleva al siguiente campo de texto. Presiona Enter para entrar en modo formulario y escribir.',
+    boton: 'Presiona B para saltar al siguiente botón y Shift + B para el anterior.',
+    formulario: 'Tab avanza al siguiente campo y Shift + Tab retrocede. En la lista, elige con las flechas. La casilla se marca con Espacio.',
+  },
+  voiceover: {
+    encender: 'VoiceOver se enciende con Comando + F5. La tecla VO es Control + Option. Para callar la voz, presiona Control.',
+    leer: 'Lee con VO + flecha derecha (siguiente elemento) y VO + flecha izquierda (anterior). VO + A lee todo de corrido.',
+    activar: 'Para activar un botón, ponte sobre él y presiona VO + Espacio.',
+    encabezado: 'Presiona VO + Comando + H para saltar al siguiente título. VO + U abre el rotor con la lista de títulos.',
+    campo: 'VO + Comando + J te lleva al siguiente control de formulario. Cuando estés en el campo, escribe directamente.',
+    boton: 'VO + Comando + J salta entre controles. También puedes abrir el rotor con VO + U y buscar la lista de botones.',
+    formulario: 'Tab avanza al siguiente campo y Shift + Tab retrocede. En la lista, ábrela con VO + Espacio y elige con las flechas. La casilla se marca con VO + Espacio.',
+  },
+};
+
+const PISTAS = {
+  1: (a) => `El botón se llama "Ir al pasillo" y está después del post-it. ${a.activar}`,
+  2: (a) => `Una de las salas tiene una pizarra con la clave. ${a.encabezado} Después ve al campo del router y escríbela.`,
+  3: (a) => `Ramiro siempre guarda las cosas en el cajón de las cosas raras. ${a.boton}`,
+  4: (a) => `Tienes que completar nombre, área y la casilla del juramento. ${a.formulario}`,
+};
+
+const APODOS = ['Topo Ejecutivo', 'Murciélago de Finanzas', 'Linterna Senior', 'Ninja del Ctrl+Z', 'Gerente de lo Oscuro',
+  'Lince Ágil', 'Becario Nocturno', 'Búho Full Stack', 'Scrum Master del Apagón', 'Tech Lead a Tientas', 'Marmota Disruptiva'];
+
+const PANTALLAS = ['inicio', 'nivel-1', 'nivel-2', 'nivel-3', 'nivel-4', 'nivel-5', 'fin'];
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+const cortina = $('#cortina');
+const anuncios = $('#anuncios');
+
+let lector = 'nvda';
+let partida = null;
+
+function nuevaPartida(apodo) {
+  return { apodo, inicio: 0, fin: 0, pistas: 0, errores: 0, trampa: false, pistasUsadas: {} };
+}
+
+function anunciar(texto) {
+  anuncios.textContent = '';
+  setTimeout(() => { anuncios.textContent = texto; }, 60);
+}
+
+/* Sonidos cortos: refuerzan que todo pasa por el oído */
+let audio = null;
+function sonar(tipo) {
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    const notas = { bien: [523, 784], mal: [196, 147], paso: [330] }[tipo];
+    notas.forEach((f, i) => {
+      const o = audio.createOscillator();
+      const g = audio.createGain();
+      o.type = tipo === 'mal' ? 'square' : 'sine';
+      o.frequency.value = f;
+      const t = audio.currentTime + i * 0.12;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.08, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+      o.connect(g).connect(audio.destination);
+      o.start(t);
+      o.stop(t + 0.2);
+    });
+  } catch (e) { /* sin sonido, no pasa nada */ }
+}
+
+function ponerCortina(activa) {
+  cortina.hidden = !activa;
+  document.body.classList.toggle('a-oscuras', activa);
+}
+
+function prenderLuz() {
+  if (cortina.hidden) return;
+  ponerCortina(false);
+  if (partida) partida.trampa = true;
+  anunciar('Prendiste la luz. Puedes seguir jugando, pero esta partida no entra al ranking.');
+}
+
+function aplicarAtajos() {
+  const a = ATAJOS[lector];
+  $('#encender-texto').textContent = a.encender;
+  $$('[data-tip]').forEach((p) => { p.textContent = a[p.dataset.tip]; });
+}
+
+function irA(id) {
+  PANTALLAS.forEach((p) => { $('#' + p).hidden = p !== id; });
+  window.scrollTo(0, 0);
+  setTimeout(() => $(`#${id} h1`).focus(), 120);
+}
+
+function nivelActual() {
+  return PANTALLAS.findIndex((p) => !$('#' + p).hidden);
+}
+
+function siguiente() {
+  sonar('paso');
+  const i = nivelActual() + 1;
+  // El reloj corre en las cuatro salas; el final sorpresa no resta puntos
+  if (PANTALLAS[i] === 'nivel-5') partida.fin = Date.now();
+  irA(PANTALLAS[i]);
+}
+
+function segundos() {
+  return Math.round(((partida.fin || Date.now()) - partida.inicio) / 1000);
+}
+
+function puntaje() {
+  return Math.max(0, 1000 - segundos() - partida.pistas * 100 - partida.errores * 25);
+}
+
+function formatoTiempo(s) {
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+function rango(p) {
+  if (p >= 850) return 'Murciélago Senior';
+  if (p >= 650) return 'Topo con experiencia';
+  if (p >= 400) return 'Linterna humana en formación';
+  return 'Trainee de la oscuridad';
+}
+
+/* ---------- Inicio ---------- */
+$$('input[name="lector"]').forEach((r) => r.addEventListener('change', () => { lector = r.value; aplicarAtajos(); }));
+
+$('#inventar').addEventListener('click', () => {
+  const campo = $('#apodo');
+  let nuevo;
+  do { nuevo = APODOS[Math.floor(Math.random() * APODOS.length)]; } while (nuevo === campo.value && APODOS.length > 1);
+  campo.value = nuevo;
+  anunciar(`Tu apodo es ${nuevo}.`);
+});
+
+$('#form-inicio').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const campo = $('#apodo');
+  const apodo = campo.value.trim();
+  const error = $('#apodo-error');
+  if (apodo.length < 2) {
+    error.textContent = 'Escribe un apodo de al menos 2 letras, o presiona "Inventar uno".';
+    campo.setAttribute('aria-invalid', 'true');
+    campo.focus();
+    return;
+  }
+  error.textContent = '';
+  campo.removeAttribute('aria-invalid');
+  try { localStorage.setItem('apagon-apodo', apodo); } catch (err) { /* sin almacenamiento */ }
+  partida = nuevaPartida(apodo);
+  resetNiveles();
+  sonar('mal');
+  ponerCortina(true);
+  partida.inicio = Date.now();
+  irA('nivel-1');
+});
+
+function resetNiveles() {
+  $$('form[data-ejercicio]').forEach((f) => f.reset());
+  $$('.nivel .error, [data-pista-texto]').forEach((p) => { p.textContent = ''; });
+  $$('[aria-invalid]').forEach((el) => el.removeAttribute('aria-invalid'));
+  $('#explicacion').hidden = true;
+}
+
+/* ---------- Acciones comunes ---------- */
+document.addEventListener('click', (e) => {
+  const roto = e.target.closest('[data-roto]');
+  if (roto) { e.preventDefault(); return; }
+  const control = e.target.closest('[data-accion]');
+  if (!control) return;
+  e.preventDefault();
+  const accion = control.dataset.accion;
+  if (accion === 'siguiente') siguiente();
+  if (accion === 'prender-luz') prenderLuz();
+  if (accion === 'pista') darPista(control);
+  if (accion === 'rendirse') explicar(false);
+  if (accion === 'terminar') terminar();
+  if (accion === 'reiniciar') { ponerCortina(false); irA('inicio'); }
+});
+
+function darPista(boton) {
+  const n = nivelActual();
+  const texto = PISTAS[n](ATAJOS[lector]);
+  if (!partida.pistasUsadas[n]) {
+    partida.pistasUsadas[n] = true;
+    partida.pistas++;
+  }
+  boton.closest('section').querySelector('[data-pista-texto]').textContent = 'Pista: ' + texto;
+  anunciar('Pista: ' + texto);
+}
+
+/* ---------- Sala 2: wifi ---------- */
+$('[data-ejercicio="wifi"]').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const campo = $('#clave');
+  const valor = campo.value.trim().toLowerCase();
+  if (valor === 'pantuflas') {
+    sonar('bien');
+    anunciar('Conectado. Te llega un mensaje.');
+    setTimeout(siguiente, 1400);
+  } else if (!valor) {
+    anunciar('El campo está vacío. El router no lee mentes.');
+  } else {
+    partida.errores++;
+    sonar('mal');
+    anunciar(`El router hace un ruidito triste. "${campo.value}" no es la clave. Recorre las salas por sus títulos.`);
+  }
+});
+
+/* ---------- Sala 3: cocina ---------- */
+$('[data-ejercicio="cocina"]').addEventListener('click', (e) => {
+  const boton = e.target.closest('button');
+  if (!boton) return;
+  if (boton.hasAttribute('data-correcto')) {
+    sonar('bien');
+    anunciar('Entre tres cargadores que no son de nada, un sacacorchos y 47 sobres de kétchup... ¡la tarjeta de acceso! Te la guardas.');
+    setTimeout(siguiente, 3500);
+  } else {
+    sonar('mal');
+    anunciar(boton.dataset.respuesta);
+  }
+});
+
+/* ---------- Sala 4: puerta ---------- */
+$('[data-ejercicio="puerta"]').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const campos = [
+    { el: $('#nombre'), mal: (el) => !el.value.trim(), msg: 'La puerta no deja salir a personas anónimas. Escribe tu nombre.' },
+    { el: $('#area'), mal: (el) => !el.value, msg: 'Elige tu área. La puerta necesita saber a quién culpar.' },
+    { el: $('#juramento'), mal: (el) => !el.checked, msg: 'Marca la casilla. La puerta desconfía de ti.' },
+  ];
+  const conError = campos.filter(({ el, mal, msg }) => {
+    const malo = mal(el);
+    $(`#${el.id}-error`).textContent = malo ? msg : '';
+    el.setAttribute('aria-invalid', String(malo));
+    return malo;
+  });
+  if (conError.length) {
+    partida.errores++;
+    sonar('mal');
+    const cuantos = conError.length === 1 ? 'Falta 1 campo' : `Faltan ${conError.length} campos`;
+    anunciar(`Bip bip. ${cuantos}. Te llevo al primero.`);
+    setTimeout(() => conError[0].el.focus(), 1300);
+    return;
+  }
+  sonar('bien');
+  siguiente();
+});
+
+/* ---------- Final sorpresa ---------- */
+$('#marcar-salida').addEventListener('click', () => explicar(true));
+
+function explicar(logrado) {
+  const caja = $('#explicacion');
+  if (!caja.hidden) return;
+  $('#explicacion-intro').textContent = logrado
+    ? '¡Encontraste el botón! Muy poca gente lo logra. Ahora imagina hacer esto en cada página, todos los días.'
+    : 'Tranquilo, casi nadie lo logra. No es tu culpa: la página está mal hecha.';
+  caja.hidden = false;
+  sonar(logrado ? 'bien' : 'paso');
+  setTimeout(() => $('#explicacion-titulo').focus(), 120);
+}
+
+/* ---------- Resultados y ranking ---------- */
+async function terminar() {
+  const s = segundos();
+  const p = puntaje();
+  ponerCortina(false);
+  $('#fin-texto').textContent = `${partida.apodo}, saliste de la oficina a oscuras. El lunes vas a tener una gran anécdota para la daily.`;
+  $('#fin-rango').textContent = `Rango: ${rango(p)}`;
+  $('#fin-puntos').textContent = p;
+  $('#fin-tiempo').textContent = formatoTiempo(s);
+  $('#fin-pistas').textContent = partida.pistas;
+  $('#fin-errores').textContent = partida.errores;
+  irA('fin');
+
+  const msg = $('#fin-ranking-msg');
+  if (partida.trampa) {
+    msg.textContent = 'Prendiste la luz en algún momento, así que esta partida no entra al ranking. ¡La próxima a oscuras!';
+    return;
+  }
+  const resultado = await guardarPuntaje({ apodo: partida.apodo, puntos: p, segundos: s, pistas: partida.pistas, errores: partida.errores });
+  msg.textContent = resultado;
+}
+
+const ranking = { filas: [], miId: null, compartido: false };
+
+function leerLocal() {
+  try { return JSON.parse(localStorage.getItem('apagon-ranking') || '[]'); } catch (e) { return []; }
+}
+
+function escribirLocal(filas) {
+  try { localStorage.setItem('apagon-ranking', JSON.stringify(filas)); } catch (e) { /* sin almacenamiento */ }
+}
+
+function pintarRanking() {
+  const filas = [...ranking.filas].sort((a, b) => b.puntos - a.puntos || a.segundos - b.segundos).slice(0, 20);
+  const estado = ranking.compartido
+    ? 'Ranking compartido con todos los que abren este juego.'
+    : 'Ranking guardado solo en este navegador. Inicia sesión en claude.ai para competir con tu equipo.';
+  $$('[data-ranking-estado]').forEach((p) => { p.textContent = estado; });
+
+  $$('[data-ranking]').forEach((cont) => {
+    cont.textContent = '';
+    if (!filas.length) {
+      const p = document.createElement('p');
+      p.className = 'vacio';
+      p.textContent = 'Todavía nadie salió de la oficina. El primer puesto está libre.';
+      cont.append(p);
+      return;
+    }
+    const tabla = document.createElement('table');
+    const cap = document.createElement('caption');
+    cap.textContent = `Los ${filas.length} mejores puntajes`;
+    tabla.append(cap);
+    const thead = tabla.createTHead().insertRow();
+    [['Puesto', 'num'], ['Apodo', ''], ['Puntos', 'num'], ['Tiempo', 'num'], ['Pistas', 'num']].forEach(([t, c]) => {
+      const th = document.createElement('th');
+      th.scope = 'col';
+      th.textContent = t;
+      if (c) th.className = c;
+      thead.append(th);
+    });
+    const tbody = tabla.createTBody();
+    filas.forEach((f, i) => {
+      const tr = tbody.insertRow();
+      if (ranking.miId && f.id === ranking.miId) tr.className = 'yo';
+      [[i + 1, 'num'], [String(f.apodo || 'Anónimo').slice(0, 24), ''], [f.puntos, 'num'], [formatoTiempo(f.segundos || 0), 'num'], [f.pistas ?? 0, 'num']]
+        .forEach(([v, c]) => {
+          const td = tr.insertCell();
+          td.textContent = v;
+          if (c) td.className = c;
+        });
+    });
+    cont.append(tabla);
+  });
+}
+
+let db = null;
+
+async function conectarRanking() {
+  ranking.filas = leerLocal();
+  pintarRanking();
+  if (!window.claude?.use) return;
+  const [base, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
+  const id = user ? await user.id() : null;
+  if (!base) return;
+  db = base;
+  ranking.miId = id;
+  db.collection('ranking').orderBy('puntos', 'desc').limit(50).onSnapshot(
+    (snap) => {
+      ranking.compartido = true;
+      ranking.filas = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      pintarRanking();
+    },
+    () => { ranking.compartido = false; pintarRanking(); }
+  );
+}
+
+async function guardarPuntaje(fila) {
+  const fecha = new Date().toISOString();
+  if (db && ranking.miId) {
+    try {
+      const ref = db.collection('ranking').doc(ranking.miId);
+      const previo = await ref.get();
+      const mejor = previo.exists ? previo.data().puntos : -1;
+      if (fila.puntos > mejor) {
+        await ref.set({ ...fila, fecha });
+        return previo.exists ? '¡Nuevo récord personal! Ya está en el ranking.' : '¡Entraste al ranking!';
+      }
+      return `Tu récord sigue siendo ${mejor} puntos. ¡Otra vuelta y lo superas!`;
+    } catch (e) {
+      // Sin permiso para escribir: seguimos con el ranking local
+    }
+  }
+  const filas = leerLocal();
+  filas.push({ id: 'local-' + Date.now(), ...fila, fecha });
+  escribirLocal(filas);
+  if (!ranking.compartido) { ranking.filas = filas; pintarRanking(); }
+  return 'Tu puntaje quedó guardado en este navegador.';
+}
+
+/* ---------- Salida de emergencia: Escape tres veces ---------- */
+let escapes = [];
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape' || cortina.hidden) return;
+  const ahora = Date.now();
+  escapes = escapes.filter((t) => ahora - t < 1500).concat(ahora);
+  if (escapes.length >= 3) { escapes = []; prenderLuz(); }
+});
+
+try { $('#apodo').value = localStorage.getItem('apagon-apodo') || ''; } catch (e) { /* sin almacenamiento */ }
+aplicarAtajos();
+conectarRanking();
+</script>
