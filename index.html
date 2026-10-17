@@ -1,5 +1,9 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Apagón en la oficina</title>
-<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
@@ -33,7 +37,9 @@
   }
 
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   body {
+    margin: 0;
     background: var(--bg);
     color: var(--ink);
     font: 1.0625rem/1.6 var(--font-body);
@@ -180,6 +186,8 @@
 
   @media (prefers-reduced-motion: reduce) { .postit { transform: none; } }
 </style>
+</head>
+<body>
 
 <div id="cortina" aria-hidden="true" hidden></div>
 <div id="anuncios" class="solo-lector" aria-live="assertive" aria-atomic="true"></div>
@@ -697,7 +705,7 @@ function pintarRanking() {
   const filas = [...ranking.filas].sort((a, b) => b.puntos - a.puntos || a.segundos - b.segundos).slice(0, 20);
   const estado = ranking.compartido
     ? 'Ranking compartido con todos los que abren este juego.'
-    : 'Ranking guardado solo en este navegador. Inicia sesión en claude.ai para competir con tu equipo.';
+    : 'Ranking guardado solo en este navegador.';
   $$('[data-ranking-estado]').forEach((p) => { p.textContent = estado; });
 
   $$('[data-ranking]').forEach((cont) => {
@@ -736,41 +744,52 @@ function pintarRanking() {
   });
 }
 
-let db = null;
+// Cada navegador tiene un id de jugador al azar: el ranking guarda el mejor puntaje de cada uno
+function idJugador() {
+  try {
+    let id = localStorage.getItem('apagon-jugador');
+    if (!id) {
+      id = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now()).replace(/[^a-zA-Z0-9-]/g, '');
+      localStorage.setItem('apagon-jugador', id);
+    }
+    return id;
+  } catch (e) {
+    return null;
+  }
+}
 
 async function conectarRanking() {
-  ranking.filas = leerLocal();
+  ranking.miId = idJugador();
+  try {
+    const resp = await fetch('/api/ranking', { cache: 'no-store' });
+    if (!resp.ok) throw new Error(resp.status);
+    ranking.filas = await resp.json();
+    ranking.compartido = true;
+  } catch (e) {
+    // Sin servidor (archivo local o base de datos sin configurar): ranking de este navegador
+    ranking.compartido = false;
+    ranking.filas = leerLocal();
+  }
   pintarRanking();
-  if (!window.claude?.use) return;
-  const [base, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
-  const id = user ? await user.id() : null;
-  if (!base) return;
-  db = base;
-  ranking.miId = id;
-  db.collection('ranking').orderBy('puntos', 'desc').limit(50).onSnapshot(
-    (snap) => {
-      ranking.compartido = true;
-      ranking.filas = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      pintarRanking();
-    },
-    () => { ranking.compartido = false; pintarRanking(); }
-  );
 }
 
 async function guardarPuntaje(fila) {
   const fecha = new Date().toISOString();
-  if (db && ranking.miId) {
+  if (ranking.compartido && ranking.miId) {
     try {
-      const ref = db.collection('ranking').doc(ranking.miId);
-      const previo = await ref.get();
-      const mejor = previo.exists ? previo.data().puntos : -1;
-      if (fila.puntos > mejor) {
-        await ref.set({ ...fila, fecha });
-        return previo.exists ? '¡Nuevo récord personal! Ya está en el ranking.' : '¡Entraste al ranking!';
-      }
+      const resp = await fetch('/api/ranking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: ranking.miId, ...fila }),
+      });
+      if (!resp.ok) throw new Error(resp.status);
+      const { estado, mejor } = await resp.json();
+      await conectarRanking();
+      if (estado === 'nuevo') return '¡Entraste al ranking!';
+      if (estado === 'record') return '¡Nuevo récord personal! Ya está en el ranking.';
       return `Tu récord sigue siendo ${mejor} puntos. ¡Otra vuelta y lo superas!`;
     } catch (e) {
-      // Sin permiso para escribir: seguimos con el ranking local
+      // El servidor no respondió: guardamos en este navegador
     }
   }
   const filas = leerLocal();
@@ -793,3 +812,5 @@ try { $('#apodo').value = localStorage.getItem('apagon-apodo') || ''; } catch (e
 aplicarAtajos();
 conectarRanking();
 </script>
+</body>
+</html>

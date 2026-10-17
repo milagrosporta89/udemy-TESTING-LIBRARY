@@ -18,9 +18,24 @@ solo puedes usar el teclado y la voz del lector. Cada sala enseña una habilidad
 Arrancas con 1000 puntos y pierdes 1 por segundo, 100 por pista y 25 por respuesta equivocada. El final sorpresa no
 resta puntos. Si prendes la luz (`Escape` tres veces), la partida no entra al ranking.
 
-Publicado en claude.ai, el ranking se comparte entre todas las personas que abren el juego y cada una guarda su mejor
-puntaje. Abierto como archivo local, el ranking queda guardado solo en ese navegador.
+Publicado en Vercel con la base de datos conectada, el ranking se comparte entre todas las personas que juegan y
+guarda el mejor puntaje de cada navegador. Abierto como archivo local, el ranking queda guardado solo en ese navegador.
 
-## Cómo usarlo
+## Publicarlo en Vercel (gratis)
 
-Abre `index.html` en el navegador, o sirve la carpeta con `npx serve .`.
+1. Entra a [vercel.com](https://vercel.com) y crea una cuenta con tu usuario de GitHub.
+2. Elige **Add New → Project**, importa este repositorio y presiona **Deploy** sin cambiar nada.
+3. En el proyecto, abre la pestaña **Storage**, crea una base de datos **Upstash for Redis** con el plan gratuito y
+   conéctala al proyecto. Vercel agrega solo las claves que necesita el ranking.
+4. Ve a **Deployments** y vuelve a desplegar el último para que tome la base de datos.
+
+Sin el paso 3 el juego funciona igual, pero cada persona ve solo sus propios puntajes.
+
+## Archivos
+
+- `index.html`: el juego completo.
+- `api/ranking.js`: guarda y devuelve el ranking.
+
+## Probarlo en tu computadora
+
+Abre `index.html` en el navegador. Para probar también el ranking compartido, usa `npx vercel dev`.
