@@ -1,0 +1,113 @@
+:root {
+  --fondo: #f7f5f0;
+  --texto: #1c1b19;
+  --suave: #55524b;
+  --acento: #1f5fbf;
+  --borde: #d6d1c4;
+  --error: #b3261e;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--fondo);
+  color: var(--texto);
+  font: 1.125rem/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+main {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 2rem 1rem 4rem;
+}
+
+h1 { font-size: 2.5rem; line-height: 1.1; margin: 0 0 .5rem; }
+h2 { font-size: 1.25rem; margin: 1.75rem 0 .5rem; }
+.bajada { font-size: 1.3rem; color: var(--suave); margin-top: 0; }
+
+fieldset {
+  border: 1px solid var(--borde);
+  border-radius: .5rem;
+  padding: 1rem 1.25rem;
+  margin: 1.5rem 0;
+}
+legend { font-weight: 600; padding: 0 .25rem; }
+fieldset label { display: block; padding: .25rem 0; }
+
+.como-encender, .aviso {
+  border-left: 4px solid var(--acento);
+  padding: .25rem 1rem;
+  margin: 1.5rem 0;
+}
+.como-encender h2, .aviso h2 { margin-top: .5rem; }
+
+kbd {
+  font: .95em ui-monospace, monospace;
+  border: 1px solid var(--borde);
+  border-bottom-width: 2px;
+  border-radius: .25rem;
+  padding: 0 .3em;
+  background: #fff;
+}
+
+button, input, select { font: inherit; }
+
+button {
+  padding: .6rem 1.2rem;
+  border: 2px solid var(--acento);
+  border-radius: .4rem;
+  background: #fff;
+  color: var(--acento);
+  cursor: pointer;
+  margin: .25rem .25rem .25rem 0;
+}
+.boton-principal { background: var(--acento); color: #fff; font-weight: 600; }
+
+input[type="text"], select {
+  display: block;
+  width: 100%;
+  max-width: 24rem;
+  padding: .5rem;
+  border: 1px solid var(--suave);
+  border-radius: .3rem;
+  margin: .25rem 0 .5rem;
+}
+
+:focus-visible { outline: 3px solid var(--acento); outline-offset: 2px; }
+
+.error { color: var(--error); margin: 0; }
+.error:empty { display: none; }
+
+/* La cortina tapa todo y se traga los clics: sin apoyo visual ni mouse */
+#cortina {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  background: #000;
+  cursor: none;
+}
+body.a-ciegas { overflow: hidden; }
+
+.solo-lector {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fondo: #171614;
+    --texto: #ece9e2;
+    --suave: #a9a59b;
+    --acento: #7fa8ff;
+    --borde: #3b3933;
+    --error: #ff8a80;
+  }
+  kbd, button { background: #22211e; }
+  .boton-principal { color: #0b0b0b; }
+}

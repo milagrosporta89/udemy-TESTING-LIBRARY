@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>A ciegas: aprende a usar un lector de pantalla</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Cortina negra: tapa la pantalla y el mouse, pero el lector sigue leyendo lo que hay debajo -->
+  <div id="cortina" aria-hidden="true" hidden></div>
+
+  <!-- Región donde se anuncian los resultados (correcto, incorrecto, cambio de lección) -->
+  <div id="anuncios" class="solo-lector" aria-live="assertive" aria-atomic="true"></div>
+
+  <main>
+    <!-- Pantalla 0: bienvenida (visible) -->
+    <section id="bienvenida" class="pantalla" aria-labelledby="bienvenida-titulo">
+      <h1 id="bienvenida-titulo" tabindex="-1">A ciegas</h1>
+      <p class="bajada">Aprende a usar un lector de pantalla a tu ritmo y sin que nadie te mire.</p>
+
+      <p>Mucha gente que trabaja en tecnología nunca usó un lector de pantalla, y es normal. Esta práctica te propone
+        algo simple: apagamos la pantalla y te movés solo con el teclado y la voz, como lo hacen todos los días
+        las personas ciegas.</p>
+
+      <form id="form-inicio">
+        <fieldset>
+          <legend>¿Qué lector de pantalla vas a usar?</legend>
+          <label><input type="radio" name="lector" value="nvda" checked> NVDA (Windows, gratis)</label>
+          <label><input type="radio" name="lector" value="jaws"> JAWS (Windows)</label>
+          <label><input type="radio" name="lector" value="voiceover"> VoiceOver (Mac)</label>
+        </fieldset>
+
+        <div class="como-encender" aria-live="polite">
+          <h2>Antes de empezar, enciende el lector</h2>
+          <p id="encender-texto"></p>
+        </div>
+
+        <div class="aviso">
+          <h2>Para salir de la pantalla negra</h2>
+          <p>Presiona <kbd>Escape</kbd> tres veces seguidas. También hay un enlace para desactivarla al final de cada lección.</p>
+        </div>
+
+        <button type="submit" class="boton-principal">Apagar la pantalla y empezar</button>
+      </form>
+    </section>
+
+    <!-- Lección 1: leer -->
+    <section id="leccion-1" class="pantalla" aria-labelledby="l1-titulo" hidden>
+      <h1 id="l1-titulo" tabindex="-1">Lección 1 de 4: leer la página</h1>
+      <p>Hola. La pantalla está negra y eso está bien: a partir de ahora tus oídos son tus ojos.</p>
+      <p>Un lector de pantalla lee la página de a un elemento por vez: un párrafo, un título, un botón.</p>
+      <p data-tip="leer"></p>
+      <p>Si la voz va muy rápido, no te preocupes. Puedes volver a leer cuantas veces quieras.</p>
+      <p>Cuando llegues al botón "Continuar", actívalo.</p>
+      <p data-tip="activar"></p>
+      <button type="button" data-accion="siguiente">Continuar</button>
+      <p><a href="#" data-accion="quitar-cortina">Desactivar pantalla negra</a></p>
+    </section>
+
+    <!-- Lección 2: encabezados -->
+    <section id="leccion-2" class="pantalla" aria-labelledby="l2-titulo" hidden>
+      <h1 id="l2-titulo" tabindex="-1">Lección 2 de 4: saltar por encabezados</h1>
+      <p>Leer todo línea por línea es lento. Las personas que usan lector de pantalla saltan de título en título
+        para encontrar rápido lo que buscan, como cuando hojeas un diario.</p>
+      <p data-tip="encabezado"></p>
+      <p>Abajo hay tres salas. En una de ellas está escondida la palabra secreta. Encuéntrala y escríbela en
+        el campo que está al final.</p>
+
+      <h2>Sala 1: el pasillo</h2>
+      <p>Un pasillo largo con cuadros en las paredes. Aquí no hay nada escondido.</p>
+
+      <h2>Sala 2: la biblioteca</h2>
+      <p>Estantes llenos de libros viejos. Entre ellos hay uno abierto que dice: la palabra secreta es <span lang="es">faro</span>.</p>
+
+      <h2>Sala 3: el jardín</h2>
+      <p>Flores, un banco y una fuente. Aquí tampoco hay nada.</p>
+
+      <h2>Escribe la palabra secreta</h2>
+      <p data-tip="campo"></p>
+      <form data-ejercicio="palabra" novalidate>
+        <label for="palabra">Palabra secreta</label>
+        <input id="palabra" name="palabra" type="text" autocomplete="off">
+        <button type="submit">Comprobar</button>
+      </form>
+      <p><a href="#" data-accion="quitar-cortina">Desactivar pantalla negra</a></p>
+    </section>
+
+    <!-- Lección 3: botones -->
+    <section id="leccion-3" class="pantalla" aria-labelledby="l3-titulo" hidden>
+      <h1 id="l3-titulo" tabindex="-1">Lección 3 de 4: encontrar botones</h1>
+      <p>Igual que con los títulos, puedes saltar directamente de botón en botón.</p>
+      <p data-tip="boton"></p>
+      <p>Abajo hay varios botones con nombres de frutas. Busca y activa el botón "Mango".</p>
+      <div class="frutas" data-ejercicio="frutas">
+        <button type="button">Banana</button>
+        <button type="button">Frutilla</button>
+        <button type="button">Kiwi</button>
+        <button type="button">Durazno</button>
+        <button type="button">Mango</button>
+        <button type="button">Pera</button>
+      </div>
+      <p><a href="#" data-accion="quitar-cortina">Desactivar pantalla negra</a></p>
+    </section>
+
+    <!-- Lección 4: formularios -->
+    <section id="leccion-4" class="pantalla" aria-labelledby="l4-titulo" hidden>
+      <h1 id="l4-titulo" tabindex="-1">Lección 4 de 4: completar un formulario</h1>
+      <p>Los formularios son donde más se nota si una página es accesible: cada campo debe decir qué espera.</p>
+      <p data-tip="formulario"></p>
+      <p>Completa los tres campos y envía el formulario. Si algo falta, te lo vamos a decir.</p>
+      <form data-ejercicio="formulario" novalidate>
+        <div class="campo">
+          <label for="nombre">Tu nombre</label>
+          <input id="nombre" name="nombre" type="text" autocomplete="given-name" aria-describedby="nombre-error">
+          <p id="nombre-error" class="error"></p>
+        </div>
+        <div class="campo">
+          <label for="experiencia">¿Cuánto usaste un lector de pantalla antes de hoy?</label>
+          <select id="experiencia" name="experiencia" aria-describedby="experiencia-error">
+            <option value="">Elige una opción</option>
+            <option value="nunca">Nunca</option>
+            <option value="poco">Un poco</option>
+            <option value="bastante">Bastante</option>
+          </select>
+          <p id="experiencia-error" class="error"></p>
+        </div>
+        <div class="campo">
+          <label><input id="compromiso" name="compromiso" type="checkbox" aria-describedby="compromiso-error">
+            Me comprometo a probar mi próximo proyecto con un lector de pantalla</label>
+          <p id="compromiso-error" class="error"></p>
+        </div>
+        <button type="submit">Enviar</button>
+      </form>
+      <p><a href="#" data-accion="quitar-cortina">Desactivar pantalla negra</a></p>
+    </section>
+
+    <!-- Final -->
+    <section id="final" class="pantalla" aria-labelledby="final-titulo" hidden>
+      <h1 id="final-titulo" tabindex="-1">¡Lo lograste!</h1>
+      <p id="final-saludo">Completaste las cuatro lecciones sin mirar la pantalla.</p>
+      <h2>Lo que aprendiste</h2>
+      <ul>
+        <li>Leer una página elemento por elemento.</li>
+        <li>Saltar por encabezados para encontrar información.</li>
+        <li>Ir directo a los botones.</li>
+        <li>Completar un formulario y entender sus errores.</li>
+      </ul>
+      <p>Ahora piensa: si una página no tuviera títulos, ni nombres en sus botones, ni etiquetas en sus campos,
+        ¿cuánto te habría costado?</p>
+      <button type="button" data-accion="quitar-cortina">Desactivar pantalla negra</button>
+      <button type="button" data-accion="reiniciar">Volver a empezar</button>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
